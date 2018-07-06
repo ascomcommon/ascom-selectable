@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test vue (closer to real use)</title>
+    <script src="../dist/selectable.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.3.3/vue.js"></script>
+    <style>
+        #app table {
+            font-size: 16px;
+            width: 500px;
+        }
+        #app table th,
+        #app table td {
+            padding: 5px;
+            margin: 1px;
+            background-color: #f0f0f0;
+        }
+        #app table > thead > tr > th {
+            background-color: #ccc;
+        }
+        #app table > thead > tr > th:first-child,
+        #app table > tbody > tr > td:first-child {
+            width: 300px;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        /* Styles for v-selectable display */
+        #selectbox {
+            position: absolute;
+            border: 1px dotted #000;
+            z-index: 9999;
+            top: 0;
+            left: 0;
+            cursor: default;
+            display: none;
+        }
+        #app table > tbody > tr > td.selecting:first-child {
+            background-color: yellow;
+        }
+        #app table > tbody > tr > td.selected:first-child {
+            background-color: orange;
+        }
+        .hidden {
+            display: none;
+        }
+        .wrapper {
+            overflow-y: scroll;
+            height: 300px;
+            width: 700px;
+            margin: 20px auto;
+            border: 10px solid #f0f0f0;
+        }
+        .content {
+            position: relative;
+        }
+        #selection-area {
+            position: absolute;
+            z-index: -500;
+            top: 0;
+            left: 0;
+            height: 660px;
+            width: 314px;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div>
+        <button @click="showHidden = !showHidden">Toggle hidden</button>
+        <span>Selected items count: {{ selectedCount }}</span>
+    </div>
+
+    <div class="wrapper" ref="scrollbox">
+        <div class="content">
+            <div id="selectbox"></div>
+            <div id="selection-area"></div>
+            <table>
+                <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Surname</th>
+                    <th>Age</th>
+                </tr>
+                </thead>
+                <tbody v-selectable="{
+                        selectedGetter: selectedGetter,
+                        selectedSetter: selectedSetter,
+                        selectingSetter: selectingSetter
+                        }"
+                       data-items=".item" data-box="#selectbox" data-constraint="#selection-area" ref="vsel">
+                <tr v-for="(person, i) in persons" :key="person.id" :class="{ hidden: showHidden && person.hidden }">
+                    <td :class="{ selected: !!selected[i], selecting: !!selecting[i] }" class="item">
+                        {{ person.name }}
+                        <button @click="googleIt(person)" @mousedown.stop>google it</button>
+                    </td>
+                    <td>{{ person.surname }}</td>
+                    <td>{{ person.age }}</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div>
+        <button @click="clearSelection">Clear selection</button>
+        <button @click="selectAll">Select all</button>
+        <button @click="invertSelection">Invert selection</button>
+    </div>
+</div>
+<script>
+    new Vue({
+        el: '#app',
+
+        data: {
+            persons: [
+                { id: 1, name: 'William', surname: 'Taft', age: 72, hidden: true },
+                { id: 2, name: 'Woodrow', surname: 'Wilson', age: 67, hidden: false },
+                { id: 3, name: 'Warren', surname: 'Harding', age: 57, hidden: true },
+                { id: 4, name: 'Calvin', surname: 'Coolidge', age: 60, hidden: true },
+                { id: 5, name: 'Herbert', surname: 'Hoover', age: 90, hidden: true },
+                { id: 6, name: 'Franklin', surname: 'Roosevelt', age: 63, hidden: false },
+                { id: 7, name: 'Harry', surname: 'Truman', age: 88, hidden: false },
+                { id: 8, name: 'Dwight', surname: 'Eisenhower', age: 78, hidden: true },
+                { id: 9, name: 'John', surname: 'Kennedy', age: 46, hidden: false },
+                { id: 10, name: 'Lyndon', surname: 'Johnson', age: 64, hidden: false },
+                { id: 11, name: 'Richard', surname: 'Nixon', age: 81, hidden: true },
+                { id: 12, name: 'Gerald', surname: 'Ford', age: 93, hidden: true },
+                { id: 13, name: 'Jimmy', surname: 'Carter', age: 92, hidden: false },
+                { id: 14, name: 'Ronald', surname: 'Reagan', age: 93, hidden: true },
+                { id: 15, name: 'George', surname: 'Bush', age: 92, hidden: true },
+                { id: 16, name: 'Bill', surname: 'Clinton', age: 70, hidden: false },
+                { id: 17, name: 'George', surname: 'Bush', age: 70, hidden: true },
+                { id: 18, name: 'Barack', surname: 'Obama', age: 55, hidden: false },
+                { id: 19, name: 'Donald', surname: 'Trump', age: 70, hidden: true },
+            ],
+            selected: [],
+            selecting: [],
+            showHidden: false
+        },
+
+        mounted: function() {
+            vueSelectable.setOptions(this.$refs.vsel, { scrollingFrame: this.$refs.scrollbox });
+        },
+
+        computed: {
+            selectedCount: function() {
+                return this.selected.reduce((c, i) => c + (i ? 1 : 0), 0);
+            }
+        },
+
+        methods: {
+            googleIt: function (person) {
+                window.open('http://www.google.com/search?q=' + person.name + '+' + person.surname, '_blank');
+            },
+
+            clearSelection: function () {
+                this.selected = [];
+            },
+
+            selectAll: function () {
+                this.selected = new Array(this.persons.length).fill(true);
+            },
+
+            invertSelection: function () {
+                this.selected = (this.selected.length > 0) ?
+                    this.selected.map(function (i) { return !i; }) :
+                    new Array(this.persons.length).fill(true);
+            },
+
+            selectedGetter: function () {
+                return this.selected;
+            },
+
+            selectedSetter: function (v) {
+                this.selected = v;
+            },
+
+            selectingSetter: function (v) {
+                this.selecting = v;
+            }
+        },
+
+        directives: {
+            selectable: vueSelectable.default
+        }
+    });
+</script>
+</body>
+</html>
